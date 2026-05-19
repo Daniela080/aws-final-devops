@@ -28,7 +28,7 @@ jobs:
       - name: Run tests
         run: npm test
 
-  # JOB 2: Validar Terraform
+  # JOB 2: Validar Terraform (sin credenciales AWS)
   validate-terraform:
     name: Validacion Terraform
     runs-on: ubuntu-latest
@@ -44,25 +44,13 @@ jobs:
 
       - name: Terraform Init
         working-directory: terraform
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
-        run: terraform init
+        run: terraform init -backend=false
 
       - name: Terraform Validate
         working-directory: terraform
         run: terraform validate
 
-      - name: Terraform Plan
-        working-directory: terraform
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
-        run: terraform plan -var="key_name=vockey"
-
-  # JOB 3: Despliegue (solo evidencia, no destruye)
+  # JOB 3: Confirmacion de despliegue
   deploy:
     name: Preparacion Despliegue
     runs-on: ubuntu-latest
