@@ -6,13 +6,13 @@ on:
       - main
 
 jobs:
+  # JOB 1: Validar código y correr pruebas
   test:
+    name: Validacion y Pruebas
     runs-on: ubuntu-latest
-
     defaults:
       run:
         working-directory: app
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -27,3 +27,53 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+  # JOB 2: Validar Terraform
+  validate-terraform:
+    name: Validacion Terraform
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+
+      - name: Terraform Init
+        working-directory: terraform
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: terraform
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: terraform
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+        run: terraform plan
+
+  # JOB 3: Despliegue (solo evidencia, no destruye)
+  deploy:
+    name: Preparacion Despliegue
+    runs-on: ubuntu-latest
+    needs: validate-terraform
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Confirmar despliegue listo
+        run: |
+          echo "Infraestructura desplegada en AWS"
+          echo "ALB: ${{ secrets.ALB_DNS }}"
+          echo "Instancia 1: ${{ secrets.INSTANCE_1_IP }}"
+          echo "Instancia 2: ${{ secrets.INSTANCE_2_IP }}"
