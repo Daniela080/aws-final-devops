@@ -172,3 +172,95 @@ resource "aws_lb_listener" "http_listener" {
     target_group_arn = aws_lb_target_group.app_tg.arn
   }
 }
+
+# ─── SUBREDES PRIVADAS ─────────────────────────────────────────────────────────
+resource "aws_subnet" "private_subnet_1" {
+  vpc_id            = aws_vpc.main_vpc.id
+  cidr_block        = "10.0.3.0/24"
+  availability_zone = "us-east-1a"
+
+  tags = {
+    Name = "${var.project_name}-private-1"
+  }
+}
+
+resource "aws_subnet" "private_subnet_2" {
+  vpc_id            = aws_vpc.main_vpc.id
+  cidr_block        = "10.0.4.0/24"
+  availability_zone = "us-east-1b"
+
+  tags = {
+    Name = "${var.project_name}-private-2"
+  }
+}
+
+# ─── SECURITY GROUP - RDS ──────────────────────────────────────────────────────
+resource "aws_security_group" "rds_sg" {
+  name        = "${var.project_name}-rds-sg"
+  description = "Security group para RDS"
+  vpc_id      = aws_vpc.main_vpc.id
+
+  ingress {
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.app_sg.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.project_name}-rds-sg"
+  }
+}
+
+# ─── RDS SUBNET GROUP ──────────────────────────────────────────────────────────
+resource "aws_db_subnet_group" "main" {
+  name       = "${var.project_name}-db-subnet-group"
+  subnet_ids = [aws_subnet.private_subnet_1.id, aws_subnet.private_subnet_2.id]
+
+  tags = {
+    Name = "${var.project_name}-db-subnet-group"
+  }
+}
+
+# ─── RDS POSTGRESQL ────────────────────────────────────────────────────────────
+resource "aws_db_instance" "main" {
+  identifier              = "${var.project_name}-db"
+  engine                  = "postgres"
+  engine_version          = "15"
+  instance_class          = "db.t3.micro"
+  allocated_storage       = 20
+  db_name                 = "appdb"
+  username                = "dbadmin"
+  password                = var.db_password
+  db_subnet_group_name    = aws_db_subnet_group.main.name
+  vpc_security_group_ids  = [aws_security_group.rds_sg.id]
+  skip_final_snapshot     = true
+  multi_az                = false
+  backup_retention_period = 1
+  publicly_accessible     = false
+
+  tags = {
+    Name = "${var.project_name}-db"
+  }
+}
+
+# ─── RDS READ REPLICA ──────────────────────────────────────────────────────────
+resource "aws_db_instance" "replica" {
+  identifier             = "${var.project_name}-db-replica"
+  replicate_source_db    = aws_db_instance.main.identifier
+  instance_class         = "db.t3.micro"
+  skip_final_snapshot    = true
+  publicly_accessible    = false
+  vpc_security_group_ids = [aws_security_group.rds_sg.id]
+
+  tags = {
+    Name = "${var.project_name}-db-replica"
+  }
+}

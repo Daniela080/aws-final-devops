@@ -20,3 +20,9 @@ variable "key_name" {
   description = "SSH key pair name"
   type        = string
 }
+
+variable "db_password" {
+  description = "Contraseña de la base de datos"
+  type        = string
+  sensitive   = true
+}

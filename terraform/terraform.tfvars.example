@@ -1,0 +1,4 @@
+project_name  = "aws-final-devops"
+instance_type = "t2.micro"
+key_name      = "vockey"
+db_password   = "MiPassword123!"
